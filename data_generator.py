@@ -34,8 +34,10 @@ def save_csv(data: List[Dict], path: str) -> None:
 
 if __name__ == "__main__":
     SCRIPT = [
-        {"time": "22:00", "device": "거실", "action": "OFF"},
-        {"time": "07:00", "device": "거실", "action": "ON"},
+        {"time": "22:00", "device": "조명(거실)", "action": "OFF"},
+        {"time": "07:00", "device": "조명(거실)", "action": "ON"},
+        {"time": "23:00", "device": "가스벨브", "action": "OFF"},
+        {"time": "08:00", "device": "가스벨브", "action": "ON"},
     ]
     dataset = generate_script_data(SCRIPT, "2024-01-01", 2)
     save_csv(dataset, "sample_data.csv")

@@ -2,8 +2,9 @@
 
 간단한 생활 패턴 시뮬레이터 예제입니다. 다음과 같은 모듈을 포함합니다.
 
-* `test.py` – Tkinter 기반 시뮬레이션 UI. `rules.json`에 저장된 규칙을 읽어
-  시뮬레이션 시간에 맞춰 자동화 이벤트를 발생시킵니다.
+* `test.py` – Tkinter 기반 시뮬레이션 UI.
+  탭 메뉴(학습데이터 생성/학습/서비스/환경설정/조회메뉴)를 제공하며
+  `rules.json`에 저장된 규칙을 불러와 시뮬레이션 시간을 진행합니다.
 * `chatbot.py` – 터미널 챗봇. `"22:00에 거실 조명 꺼줘"`와 같은 문장을
   입력하면 시간과 동작을 추출하여 규칙을 제안하고 `rules.json`에 저장합니다.
   데이터셋 CSV를 인자로 주면 패턴을 분석해 권고를 제안합니다.
@@ -19,9 +20,9 @@
 python data_generator.py  # sample_data.csv 생성
 ```
 
-예시:
+실행 예시:
 
 ```bash
 python chatbot.py generated_data.csv  # 데이터셋 분석 후 규칙 생성
-python test.py                       # 시뮬레이션 UI 실행
+python test.py                       # 탭 기반 UI 실행
 ```

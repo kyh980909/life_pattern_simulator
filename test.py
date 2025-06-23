@@ -5,6 +5,7 @@ import threading
 import time
 import random
 from data_generator import generate_script_data, save_csv
+from pattern_analyzer import load_csv, suggest_rules
 
 # 규칙 기반 자동화를 위해 RuleSet 불러오기
 from rule_set import RuleSet
@@ -14,7 +15,8 @@ from rule_set import RuleSet
 class LearningDataCreationUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("학습데이터 생성 메뉴")
+        if hasattr(self.root, "title"):
+            self.root.title("학습데이터 생성 메뉴")
 
         # 시뮬레이션 관련 변수 초기화
         self.simulation_running = False
@@ -29,8 +31,9 @@ class LearningDataCreationUI:
         self.off_colors = {"거실": "lightblue", "주방": "lightgreen", "침실": "lightyellow", "욕실": "lightpink"}
         self.on_colors = {"거실": "blue", "주방": "green", "침실": "gold", "욕실": "red"}
 
-        # 평면도 상의 방 사각형 id를 저장할 딕셔너리
+        # 평면도 상의 방 사각형 id 및 디바이스 아이콘 저장용 딕셔너리
         self.room_rects = {}
+        self.device_icons = {}
 
         # 전체 화면을 상단 Frame(제목영역) / 메인영역(좌측=평면도, 우측=시계+테이블)으로 구분
         self.top_frame = tk.Frame(self.root, height=50, bg="lightgray")
@@ -140,12 +143,28 @@ class LearningDataCreationUI:
         rect_id = self.floorplan_canvas.create_rectangle(200, 110, 370, 280, fill=self.off_colors["욕실"], outline="black", width=2)
         self.room_rects["욕실"] = rect_id
         self.floorplan_canvas.create_text(285, 195, text="욕실", font=("Helvetica", 14, "bold"))
+
+        # 디바이스 아이콘 배치
+        self.device_icons["조명(거실)"] = self.floorplan_canvas.create_oval(30, 30, 50, 50, fill="gray")
+        self.floorplan_canvas.create_text(40, 60, text="조명")
+        self.device_icons["에어컨"] = self.floorplan_canvas.create_rectangle(150, 20, 170, 40, fill="gray")
+        self.floorplan_canvas.create_text(160, 50, text="AC")
+        self.device_icons["CCTV"] = self.floorplan_canvas.create_rectangle(80, 120, 100, 140, fill="gray")
+        self.floorplan_canvas.create_text(90, 150, text="CCTV")
+
+        self.device_icons["조명(주방)"] = self.floorplan_canvas.create_oval(220, 20, 240, 40, fill="gray")
+        self.floorplan_canvas.create_text(230, 50, text="조명")
+        self.device_icons["가스벨브"] = self.floorplan_canvas.create_rectangle(330, 70, 350, 90, fill="gray")
+        self.floorplan_canvas.create_text(340, 100, text="가스")
+
+        self.device_icons["보일러"] = self.floorplan_canvas.create_rectangle(260, 230, 280, 250, fill="gray")
+        self.floorplan_canvas.create_text(270, 260, text="보일러")
     
     def generate_pattern(self):
         # 기본 스크립트를 이용해 7일치 데이터 생성 후 CSV 저장
         script = [
-            {"time": "22:00", "device": "거실", "action": "OFF"},
-            {"time": "07:00", "device": "거실", "action": "ON"},
+            {"time": "22:00", "device": "조명(거실)", "action": "OFF"},
+            {"time": "07:00", "device": "조명(거실)", "action": "ON"},
         ]
         data = generate_script_data(script, "2024-01-01", 7)
         save_csv(data, "generated_data.csv")
@@ -173,8 +192,8 @@ class LearningDataCreationUI:
             except ValueError:
                 days = 7
             script = [
-                {"time": "22:00", "device": "거실", "action": "OFF"},
-                {"time": "07:00", "device": "거실", "action": "ON"},
+                {"time": "22:00", "device": "조명(거실)", "action": "OFF"},
+                {"time": "07:00", "device": "조명(거실)", "action": "ON"},
             ]
             data = generate_script_data(script, start_date, days)
             save_csv(data, "generated_data.csv")
@@ -224,14 +243,15 @@ class LearningDataCreationUI:
                     activity = rule.get("action")
                     if device and activity:
                         self.root.after(0, lambda d=device, t=sim_time_str, a=activity: self.tree.insert("", tk.END, values=(d, t, "-", a)))
-                        if device in self.room_rects:
-                            new_color = self.on_colors[device] if activity.upper() == "ON" else self.off_colors[device]
-                            self.root.after(0, lambda d=device, color=new_color: self.floorplan_canvas.itemconfig(self.room_rects[d], fill=color))
+                        icon = self.device_icons.get(device)
+                        if icon:
+                            color = "yellow" if activity.upper() == "ON" else "gray"
+                            self.root.after(0, lambda i=icon, c=color: self.floorplan_canvas.itemconfig(i, fill=c))
             
             # 임의 이벤트 생성: 50% 확률로 이벤트 발생
             if random.random() < 0.5:
                 # 임의 디바이스 선택
-                device = random.choice(["거실", "주방", "침실", "욕실"])
+                device = random.choice(list(self.device_icons.keys()))
                 # 이벤트 시간: 현재 시뮬레이션 시간
                 event_time = sim_time_str
                 # 이벤트 액티비티: ON 또는 OFF 중 임의 선택
@@ -239,15 +259,69 @@ class LearningDataCreationUI:
                 # Treeview에 새 이벤트 데이터 추가 (이벤트 발생 시간을 'from'에 기록하고, 'to'는 '-' 처리)
                 self.root.after(0, lambda d=device, t=event_time, act=activity: self.tree.insert("", tk.END, values=(d, t, "-", act)))
 
-                # 해당 디바이스의 평면도 사각형 색상 업데이트
-                if device in self.room_rects:
-                    if activity == "ON":
-                        new_color = self.on_colors[device]
-                    else:
-                        new_color = self.off_colors[device]
-                    self.root.after(0, lambda d=device, color=new_color: self.floorplan_canvas.itemconfig(self.room_rects[d], fill=color))
+                # 디바이스 아이콘 색상 업데이트
+                icon = self.device_icons.get(device)
+                if icon:
+                    color = "yellow" if activity == "ON" else "gray"
+                    self.root.after(0, lambda i=icon, c=color: self.floorplan_canvas.itemconfig(i, fill=c))
+
+
+class MainApp:
+    def __init__(self, root):
+        self.root = root
+        root.title("Life Pattern Simulator")
+
+        self.notebook = ttk.Notebook(root)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        self.tab1 = ttk.Frame(self.notebook)
+        self.tab2 = ttk.Frame(self.notebook)
+        self.tab3 = ttk.Frame(self.notebook)
+        self.tab4 = ttk.Frame(self.notebook)
+        self.tab5 = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.tab1, text="학습데이터 생성")
+        self.notebook.add(self.tab2, text="학습")
+        self.notebook.add(self.tab3, text="서비스")
+        self.notebook.add(self.tab4, text="환경설정")
+        self.notebook.add(self.tab5, text="조회메뉴")
+
+        self.data_tab = LearningDataCreationUI(self.tab1)
+
+        # 학습 탭: 간단한 패턴 분석 실행 버튼
+        tk.Button(self.tab2, text="패턴 분석", command=self.run_analysis).pack(pady=10)
+        self.analysis_output = tk.Text(self.tab2, height=10)
+        self.analysis_output.pack(fill=tk.BOTH, expand=True)
+
+        # 서비스 탭: 시뮬레이션 제어 버튼 재사용
+        tk.Button(self.tab3, text="시뮬레이션 시작", command=self.data_tab.start_simulation).pack(pady=5)
+        tk.Button(self.tab3, text="시뮬레이션 중지", command=self.data_tab.stop_simulation).pack(pady=5)
+
+        tk.Label(self.tab4, text="환경설정 (예시)").pack(pady=20)
+
+        tk.Label(self.tab5, text="저장된 규칙").pack()
+        self.rule_text = tk.Text(self.tab5, height=10)
+        self.rule_text.pack(fill=tk.BOTH, expand=True)
+        self.show_rules()
+
+    def run_analysis(self):
+        try:
+            events = load_csv("generated_data.csv")
+        except FileNotFoundError:
+            self.analysis_output.insert(tk.END, "generated_data.csv not found\n")
+            return
+        suggestions = suggest_rules(events)
+        self.analysis_output.delete("1.0", tk.END)
+        for s in suggestions:
+            line = f"{s['time']} {s['device']} {s['action']}\n"
+            self.analysis_output.insert(tk.END, line)
+
+    def show_rules(self):
+        self.rule_text.delete("1.0", tk.END)
+        for r in self.data_tab.rules:
+            self.rule_text.insert(tk.END, f"{r}\n")
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = LearningDataCreationUI(root)
+    app = MainApp(root)
     root.mainloop()
