@@ -1,12 +1,25 @@
 import re
-from typing import Tuple
+import sys
+from typing import Tuple, List, Dict
 from rule_set import RuleSet
+from pattern_analyzer import load_csv, suggest_rules
 
 class Chatbot:
     """Simple command-line chatbot for creating automation rules."""
 
     def __init__(self, rules: RuleSet):
         self.rules = rules
+
+    def analyze_dataset(self, events: List[Dict[str, str]]) -> None:
+        """Suggest rules based on dataset analysis."""
+        suggestions = suggest_rules(events)
+        for s in suggestions:
+            phrase = f"매일 {s['time']}에 {s['device']}를 {s['action']} 하시겠습니까? (Yes/No)"
+            print(phrase)
+            ans = input().strip().lower()
+            if ans == 'yes':
+                self.rules.add_rule({'device': s['device'], 'action': s['action'], 'time': s['time']})
+                print('규칙이 저장되었습니다.')
 
     @staticmethod
     def _extract_time(text: str) -> str | None:
@@ -42,8 +55,17 @@ class Chatbot:
         else:
             print("예시: '22:00에 거실 조명 꺼줘'와 같이 입력해주세요.")
 
-    def run(self) -> None:
+    def run(self, dataset_path: str | None = None) -> None:
         print("자동화 권고 챗봇 (종료하려면 'quit' 입력)")
+
+        if dataset_path:
+            try:
+                events = load_csv(dataset_path)
+                print(f"데이터셋 {dataset_path} 분석 결과 권고를 제시합니다.")
+                self.analyze_dataset(events)
+            except FileNotFoundError:
+                print(f"데이터셋 {dataset_path}을 찾을 수 없습니다.")
+
         while True:
             user_input = input("사용자 입력> ").strip()
             if user_input.lower() in {"quit", "exit"}:
@@ -51,6 +73,7 @@ class Chatbot:
             self.suggest_rule(user_input)
 
 if __name__ == "__main__":
+    dataset = sys.argv[1] if len(sys.argv) > 1 else None
     rs = RuleSet()
     bot = Chatbot(rs)
-    bot.run()
+    bot.run(dataset)
