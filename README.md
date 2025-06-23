@@ -26,3 +26,7 @@ python data_generator.py  # sample_data.csv 생성
 python chatbot.py generated_data.csv  # 데이터셋 분석 후 규칙 생성
 python test.py                       # 탭 기반 UI 실행
 ```
+
+## 모의 사용패턴 입력 UI
+- 디바이스/시간/동작을 직접 입력하여 Treeview에 추가하는 예시 기능을 준비했습니다.
+
