@@ -1,8 +1,13 @@
+# 기본 UI 및 시뮬레이션 모듈
 import tkinter as tk
 from tkinter import ttk
 import threading
 import time
 import random
+from data_generator import generate_script_data, save_csv
+
+# 규칙 기반 자동화를 위해 RuleSet 불러오기
+from rule_set import RuleSet
 # PIL 사용 시 주석 해제 (필요에 따라 사용)
 # from PIL import Image, ImageTk
 
@@ -15,6 +20,10 @@ class LearningDataCreationUI:
         self.simulation_running = False
         self.sim_time = 0  # 시뮬레이션 시간(분 단위)
         self.sim_speed = 1  # 시뮬레이션 배속 (1x, 2x, 3x, 5x, 10x)
+
+        # 저장된 자동화 규칙 로드
+        self.rule_set = RuleSet()
+        self.rules = self.rule_set.get_rules()
 
         # 각 디바이스(방)의 기본 색상 및 활성화 색상 설정
         self.off_colors = {"거실": "lightblue", "주방": "lightgreen", "침실": "lightyellow", "욕실": "lightpink"}
@@ -133,12 +142,46 @@ class LearningDataCreationUI:
         self.floorplan_canvas.create_text(285, 195, text="욕실", font=("Helvetica", 14, "bold"))
     
     def generate_pattern(self):
-        # 유사 생활패턴 생성 로직 (추가 구현)
-        print("유사 생활패턴 생성 로직 실행")
+        # 기본 스크립트를 이용해 7일치 데이터 생성 후 CSV 저장
+        script = [
+            {"time": "22:00", "device": "거실", "action": "OFF"},
+            {"time": "07:00", "device": "거실", "action": "ON"},
+        ]
+        data = generate_script_data(script, "2024-01-01", 7)
+        save_csv(data, "generated_data.csv")
+        print("generated_data.csv 저장 완료")
     
     def detail_settings(self):
-        # 상세설정기반 생성 로직 (추가 구현)
-        print("상세설정기반 생성 로직 실행")
+        # 간단한 설정 창을 열어 시작 날짜와 일수를 받아 데이터 생성
+        win = tk.Toplevel(self.root)
+        win.title("상세 설정")
+
+        tk.Label(win, text="시작 날짜 (YYYY-MM-DD)").grid(row=0, column=0)
+        start_entry = tk.Entry(win)
+        start_entry.insert(0, "2024-01-01")
+        start_entry.grid(row=0, column=1)
+
+        tk.Label(win, text="반복 일수").grid(row=1, column=0)
+        days_entry = tk.Entry(win)
+        days_entry.insert(0, "7")
+        days_entry.grid(row=1, column=1)
+
+        def save():
+            start_date = start_entry.get()
+            try:
+                days = int(days_entry.get())
+            except ValueError:
+                days = 7
+            script = [
+                {"time": "22:00", "device": "거실", "action": "OFF"},
+                {"time": "07:00", "device": "거실", "action": "ON"},
+            ]
+            data = generate_script_data(script, start_date, days)
+            save_csv(data, "generated_data.csv")
+            print("generated_data.csv 저장 완료")
+            win.destroy()
+
+        tk.Button(win, text="생성", command=save).grid(row=2, column=0, columnspan=2)
     
     def on_speed_change(self, event):
         # 콤보박스에서 선택된 배속 값으로 시뮬레이션 배속을 업데이트
@@ -173,6 +216,17 @@ class LearningDataCreationUI:
             minutes = int(self.sim_time) % 60
             sim_time_str = f"{hours:02d}:{minutes:02d}"
             self.root.after(0, lambda t=sim_time_str: self.sim_time_label.config(text=f"시뮬레이션 시간: {t}"))
+
+            # 저장된 자동화 규칙 확인 후 적용
+            for rule in self.rules:
+                if rule.get("time") == sim_time_str:
+                    device = rule.get("device")
+                    activity = rule.get("action")
+                    if device and activity:
+                        self.root.after(0, lambda d=device, t=sim_time_str, a=activity: self.tree.insert("", tk.END, values=(d, t, "-", a)))
+                        if device in self.room_rects:
+                            new_color = self.on_colors[device] if activity.upper() == "ON" else self.off_colors[device]
+                            self.root.after(0, lambda d=device, color=new_color: self.floorplan_canvas.itemconfig(self.room_rects[d], fill=color))
             
             # 임의 이벤트 생성: 50% 확률로 이벤트 발생
             if random.random() < 0.5:
