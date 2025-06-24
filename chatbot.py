@@ -1,6 +1,6 @@
 import re
 import sys
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 from rule_set import RuleSet
 from pattern_analyzer import load_csv, suggest_rules
 
@@ -22,13 +22,13 @@ class Chatbot:
                 print('규칙이 저장되었습니다.')
 
     @staticmethod
-    def _extract_time(text: str) -> str | None:
+    def _extract_time(text: str) -> Optional[str]:
         """Return first HH:MM string in the text if present."""
         match = re.search(r"([01]\d|2[0-3]):([0-5]\d)", text)
         return match.group(0) if match else None
 
     @staticmethod
-    def _extract_device_action(text: str) -> Tuple[str | None, str | None]:
+    def _extract_device_action(text: str) -> Tuple[Optional[str], Optional[str]]:
         text_lower = text.lower()
         device = None
         action = None
@@ -55,7 +55,7 @@ class Chatbot:
         else:
             print("예시: '22:00에 거실 조명 꺼줘'와 같이 입력해주세요.")
 
-    def run(self, dataset_path: str | None = None) -> None:
+    def run(self, dataset_path: Optional[str] = None) -> None:
         print("자동화 권고 챗봇 (종료하려면 'quit' 입력)")
 
         if dataset_path:
