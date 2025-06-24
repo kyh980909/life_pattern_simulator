@@ -7,6 +7,7 @@ import random
 import csv
 from data_generator import generate_script_data, save_csv
 from pattern_analyzer import load_csv, suggest_rules
+from chatbot_gui import ChatbotUI
 
 # 규칙 기반 자동화를 위해 RuleSet 불러오기
 from rule_set import RuleSet
@@ -342,6 +343,10 @@ class MainApp:
 
         self.data_tab = LearningDataCreationUI(self.tab1)
 
+        # 별도 창에 Chatbot UI 생성
+        self.chatbot_window = tk.Toplevel(root)
+        self.chatbot = ChatbotUI(self.chatbot_window, self.data_tab.rule_set, on_rule_added=self.show_rules)
+
         # 학습 탭: 간단한 패턴 분석 실행 버튼
         tk.Button(self.tab2, text="패턴 분석", command=self.run_analysis).pack(pady=10)
         self.analysis_output = tk.Text(self.tab2, height=10)
@@ -370,9 +375,12 @@ class MainApp:
         for s in suggestions:
             line = f"{s['time']} {s['device']} {s['action']}\n"
             self.analysis_output.insert(tk.END, line)
+            message = f"매일 {s['time']}에 {s['device']}를 {s['action']} 하시겠습니까? (Yes/No)"
+            self.chatbot.ask_yes_no(message, s)
 
     def show_rules(self):
         self.rule_text.delete("1.0", tk.END)
+        self.data_tab.rules = self.data_tab.rule_set.get_rules()
         for r in self.data_tab.rules:
             self.rule_text.insert(tk.END, f"{r}\n")
 
