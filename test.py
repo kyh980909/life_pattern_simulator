@@ -34,8 +34,9 @@ class LearningDataCreationUI:
         self.off_colors = {"거실": "lightblue", "주방": "lightgreen", "침실": "lightyellow", "욕실": "lightpink"}
         self.on_colors = {"거실": "blue", "주방": "green", "침실": "gold", "욕실": "red"}
 
-        # 평면도 상의 방 사각형 id를 저장할 딕셔너리
+        # 평면도 상의 방 사각형 id와 디바이스 아이콘을 저장할 딕셔너리
         self.room_rects = {}
+        self.device_icons: dict[str, int] = {}
 
         # 전체 화면을 상단 Frame(제목영역) / 메인영역(좌측=평면도, 우측=시계+테이블)으로 구분
         self.top_frame = tk.Frame(self.root, height=50, bg="lightgray")
