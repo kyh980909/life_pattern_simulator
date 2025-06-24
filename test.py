@@ -6,6 +6,7 @@ import time
 import random
 import csv
 import os
+from typing import Optional
 from data_generator import generate_script_data, save_csv
 
 # 규칙 기반 자동화를 위해 RuleSet 불러오기
@@ -288,7 +289,7 @@ class LearningDataCreationUI:
         except ValueError:
             self.sim_speed = 1
 
-    def start_simulation(self, duration_minutes: int | None = None):
+    def start_simulation(self, duration_minutes: Optional[int] = None):
         if not self.simulation_running:
             self.simulation_running = True
             self.sim_time = 0
