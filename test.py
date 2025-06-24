@@ -6,7 +6,6 @@ import time
 import random
 import csv
 from data_generator import generate_script_data, save_csv
-from pattern_analyzer import load_csv, suggest_rules
 
 # 규칙 기반 자동화를 위해 RuleSet 불러오기
 from rule_set import RuleSet
@@ -16,8 +15,7 @@ from rule_set import RuleSet
 class LearningDataCreationUI:
     def __init__(self, root):
         self.root = root
-        if hasattr(self.root, "title"):
-            self.root.title("학습데이터 생성 메뉴")
+        self.root.title("학습데이터 생성 메뉴")
 
         # 시뮬레이션 관련 변수 초기화
         self.simulation_running = False
@@ -36,9 +34,8 @@ class LearningDataCreationUI:
         self.off_colors = {"거실": "lightblue", "주방": "lightgreen", "침실": "lightyellow", "욕실": "lightpink"}
         self.on_colors = {"거실": "blue", "주방": "green", "침실": "gold", "욕실": "red"}
 
-        # 평면도 상의 방 사각형 id 및 디바이스 아이콘 저장용 딕셔너리
+        # 평면도 상의 방 사각형 id를 저장할 딕셔너리
         self.room_rects = {}
-        self.device_icons = {}
 
         # 전체 화면을 상단 Frame(제목영역) / 메인영역(좌측=평면도, 우측=시계+테이블)으로 구분
         self.top_frame = tk.Frame(self.root, height=50, bg="lightgray")
@@ -241,8 +238,8 @@ class LearningDataCreationUI:
     def generate_pattern(self):
         # 기본 스크립트를 이용해 7일치 데이터 생성 후 CSV 저장
         script = [
-            {"time": "22:00", "device": "조명(거실)", "action": "OFF"},
-            {"time": "07:00", "device": "조명(거실)", "action": "ON"},
+            {"time": "22:00", "device": "거실", "action": "OFF"},
+            {"time": "07:00", "device": "거실", "action": "ON"},
         ]
         data = generate_script_data(script, "2024-01-01", 7)
         save_csv(data, "generated_data.csv")
@@ -270,8 +267,8 @@ class LearningDataCreationUI:
             except ValueError:
                 days = 7
             script = [
-                {"time": "22:00", "device": "조명(거실)", "action": "OFF"},
-                {"time": "07:00", "device": "조명(거실)", "action": "ON"},
+                {"time": "22:00", "device": "거실", "action": "OFF"},
+                {"time": "07:00", "device": "거실", "action": "ON"},
             ]
             data = generate_script_data(script, start_date, days)
             save_csv(data, "generated_data.csv")
@@ -378,5 +375,5 @@ class MainApp:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = MainApp(root)
+    app = LearningDataCreationUI(root)
     root.mainloop()

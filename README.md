@@ -22,11 +22,11 @@
 python data_generator.py  # sample_data.csv 생성
 ```
 
-실행 예시:
+예시:
 
 ```bash
 python chatbot.py generated_data.csv  # 데이터셋 분석 후 규칙 생성
-python test.py                       # 탭 기반 UI 실행
+python test.py                       # 시뮬레이션 UI 실행
 ```
 
 ## 모의 사용패턴 입력 UI
