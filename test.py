@@ -4,6 +4,7 @@ from tkinter import ttk
 import threading
 import time
 import random
+import csv
 from data_generator import generate_script_data, save_csv
 from pattern_analyzer import load_csv, suggest_rules
 
@@ -22,6 +23,10 @@ class LearningDataCreationUI:
         self.simulation_running = False
         self.sim_time = 0  # 시뮬레이션 시간(분 단위)
         self.sim_speed = 1  # 시뮬레이션 배속 (1x, 2x, 3x, 5x, 10x)
+        self.sim_duration = 24 * 60  # 기본 시뮬레이션 길이 (분)
+
+        # 이벤트 기록용 리스트
+        self.event_log = []
 
         # 저장된 자동화 규칙 로드
         self.rule_set = RuleSet()
@@ -145,20 +150,93 @@ class LearningDataCreationUI:
         self.floorplan_canvas.create_text(285, 195, text="욕실", font=("Helvetica", 14, "bold"))
 
         # 디바이스 아이콘 배치
-        self.device_icons["조명(거실)"] = self.floorplan_canvas.create_oval(30, 30, 50, 50, fill="gray")
+        icon = self.floorplan_canvas.create_oval(30, 30, 50, 50, fill="gray")
+        self.device_icons["조명(거실)"] = icon
         self.floorplan_canvas.create_text(40, 60, text="조명")
-        self.device_icons["에어컨"] = self.floorplan_canvas.create_rectangle(150, 20, 170, 40, fill="gray")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="조명(거실)": self.toggle_device(d))
+
+        icon = self.floorplan_canvas.create_rectangle(150, 20, 170, 40, fill="gray")
+        self.device_icons["에어컨"] = icon
         self.floorplan_canvas.create_text(160, 50, text="AC")
-        self.device_icons["CCTV"] = self.floorplan_canvas.create_rectangle(80, 120, 100, 140, fill="gray")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="에어컨": self.toggle_device(d))
+
+        icon = self.floorplan_canvas.create_rectangle(80, 120, 100, 140, fill="gray")
+        self.device_icons["CCTV"] = icon
         self.floorplan_canvas.create_text(90, 150, text="CCTV")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="CCTV": self.toggle_device(d))
 
-        self.device_icons["조명(주방)"] = self.floorplan_canvas.create_oval(220, 20, 240, 40, fill="gray")
+        icon = self.floorplan_canvas.create_oval(220, 20, 240, 40, fill="gray")
+        self.device_icons["조명(주방)"] = icon
         self.floorplan_canvas.create_text(230, 50, text="조명")
-        self.device_icons["가스벨브"] = self.floorplan_canvas.create_rectangle(330, 70, 350, 90, fill="gray")
-        self.floorplan_canvas.create_text(340, 100, text="가스")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="조명(주방)": self.toggle_device(d))
 
-        self.device_icons["보일러"] = self.floorplan_canvas.create_rectangle(260, 230, 280, 250, fill="gray")
+        icon = self.floorplan_canvas.create_rectangle(330, 70, 350, 90, fill="gray")
+        self.device_icons["가스벨브"] = icon
+        self.floorplan_canvas.create_text(340, 100, text="가스")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="가스벨브": self.toggle_device(d))
+
+        icon = self.floorplan_canvas.create_rectangle(260, 230, 280, 250, fill="gray")
+        self.device_icons["보일러"] = icon
         self.floorplan_canvas.create_text(270, 260, text="보일러")
+        self.floorplan_canvas.tag_bind(icon, "<Button-1>", lambda e, d="보일러": self.toggle_device(d))
+
+    def current_sim_time(self) -> str:
+        hours = (int(self.sim_time) // 60) % 24
+        minutes = int(self.sim_time) % 60
+        return f"{hours:02d}:{minutes:02d}"
+
+    def record_event(self, device: str, action: str, time_str: str) -> None:
+        self.event_log.append({"time": time_str, "device": device, "action": action})
+
+    def toggle_device(self, device: str) -> None:
+        icon = self.device_icons.get(device)
+        if not icon:
+            return
+        current = self.floorplan_canvas.itemcget(icon, "fill")
+        new_action = "OFF" if current == "yellow" else "ON"
+        new_color = "yellow" if new_action == "ON" else "gray"
+        self.floorplan_canvas.itemconfig(icon, fill=new_color)
+        time_str = self.current_sim_time()
+        self.tree.insert("", tk.END, values=(device, time_str, "-", new_action))
+        self.record_event(device, new_action, time_str)
+
+    def process_time_step(self, time_str: str) -> None:
+        self.sim_time_label.config(text=f"시뮬레이션 시간: {time_str}")
+        for rule in self.rules:
+            if rule.get("time") == time_str:
+                device = rule.get("device")
+                activity = rule.get("action")
+                if device and activity:
+                    self.tree.insert("", tk.END, values=(device, time_str, "-", activity))
+                    icon = self.device_icons.get(device)
+                    if icon:
+                        color = "yellow" if activity.upper() == "ON" else "gray"
+                        self.floorplan_canvas.itemconfig(icon, fill=color)
+                    self.record_event(device, activity, time_str)
+
+        if random.random() < 0.5:
+            device = random.choice(list(self.device_icons.keys()))
+            activity = random.choice(["ON", "OFF"])
+            self.tree.insert("", tk.END, values=(device, time_str, "-", activity))
+            icon = self.device_icons.get(device)
+            if icon:
+                color = "yellow" if activity == "ON" else "gray"
+                self.floorplan_canvas.itemconfig(icon, fill=color)
+            self.record_event(device, activity, time_str)
+
+    def step_simulation(self, step: int = 1) -> None:
+        self.sim_time += step
+        time_str = self.current_sim_time()
+        self.process_time_step(time_str)
+
+    def save_log(self, path: str = "service_log.csv") -> None:
+        if not self.event_log:
+            return
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["time", "device", "action"])
+            writer.writeheader()
+            writer.writerows(self.event_log)
+        print(f"기록이 {path}에 저장되었습니다.")
     
     def generate_pattern(self):
         # 기본 스크립트를 이용해 7일치 데이터 생성 후 CSV 저장
@@ -211,10 +289,13 @@ class LearningDataCreationUI:
         except ValueError:
             self.sim_speed = 1
 
-    def start_simulation(self):
+    def start_simulation(self, duration_minutes: int | None = None):
         if not self.simulation_running:
             self.simulation_running = True
             self.sim_time = 0
+            if duration_minutes:
+                self.sim_duration = duration_minutes
+            self.event_log = []
             self.simulation_thread = threading.Thread(target=self.simulation_loop)
             self.simulation_thread.daemon = True
             self.simulation_thread.start()
@@ -223,47 +304,20 @@ class LearningDataCreationUI:
     def stop_simulation(self):
         if self.simulation_running:
             self.simulation_running = False
+            self.save_log()
             print("시뮬레이션 중지")
             
     def simulation_loop(self):
-        # 시뮬레이션 루프: 1초마다 시뮬레이션 시간(분)을 sim_speed만큼 증가시키고 임의 이벤트 생성
-        while self.simulation_running:
-            time.sleep(1)  # 1초마다 업데이트
-            self.sim_time += self.sim_speed  # 배속에 따라 시간 증가
-            # 시뮬레이션 시간 업데이트 (HH:MM 형식)
-            hours = (int(self.sim_time) // 60) % 24
-            minutes = int(self.sim_time) % 60
-            sim_time_str = f"{hours:02d}:{minutes:02d}"
-            self.root.after(0, lambda t=sim_time_str: self.sim_time_label.config(text=f"시뮬레이션 시간: {t}"))
+        # 시뮬레이션 루프: 1초마다 시뮬레이션 시간(분)을 sim_speed만큼 증가
+        while self.simulation_running and self.sim_time < self.sim_duration:
+            time.sleep(1)
+            self.sim_time += self.sim_speed
+            sim_time_str = self.current_sim_time()
+            self.root.after(0, lambda t=sim_time_str: self.process_time_step(t))
 
-            # 저장된 자동화 규칙 확인 후 적용
-            for rule in self.rules:
-                if rule.get("time") == sim_time_str:
-                    device = rule.get("device")
-                    activity = rule.get("action")
-                    if device and activity:
-                        self.root.after(0, lambda d=device, t=sim_time_str, a=activity: self.tree.insert("", tk.END, values=(d, t, "-", a)))
-                        icon = self.device_icons.get(device)
-                        if icon:
-                            color = "yellow" if activity.upper() == "ON" else "gray"
-                            self.root.after(0, lambda i=icon, c=color: self.floorplan_canvas.itemconfig(i, fill=c))
-            
-            # 임의 이벤트 생성: 50% 확률로 이벤트 발생
-            if random.random() < 0.5:
-                # 임의 디바이스 선택
-                device = random.choice(list(self.device_icons.keys()))
-                # 이벤트 시간: 현재 시뮬레이션 시간
-                event_time = sim_time_str
-                # 이벤트 액티비티: ON 또는 OFF 중 임의 선택
-                activity = random.choice(["ON", "OFF"])
-                # Treeview에 새 이벤트 데이터 추가 (이벤트 발생 시간을 'from'에 기록하고, 'to'는 '-' 처리)
-                self.root.after(0, lambda d=device, t=event_time, act=activity: self.tree.insert("", tk.END, values=(d, t, "-", act)))
-
-                # 디바이스 아이콘 색상 업데이트
-                icon = self.device_icons.get(device)
-                if icon:
-                    color = "yellow" if activity == "ON" else "gray"
-                    self.root.after(0, lambda i=icon, c=color: self.floorplan_canvas.itemconfig(i, fill=c))
+        if self.simulation_running:
+            self.simulation_running = False
+            self.root.after(0, self.save_log)
 
 
 class MainApp:
@@ -293,9 +347,10 @@ class MainApp:
         self.analysis_output = tk.Text(self.tab2, height=10)
         self.analysis_output.pack(fill=tk.BOTH, expand=True)
 
-        # 서비스 탭: 시뮬레이션 제어 버튼 재사용
-        tk.Button(self.tab3, text="시뮬레이션 시작", command=self.data_tab.start_simulation).pack(pady=5)
-        tk.Button(self.tab3, text="시뮬레이션 중지", command=self.data_tab.stop_simulation).pack(pady=5)
+        # 서비스 탭: 시뮬레이션 제어 및 기록 기능
+        tk.Button(self.tab3, text="Play and Record", command=self.data_tab.start_simulation).pack(pady=5)
+        tk.Button(self.tab3, text="Stop", command=self.data_tab.stop_simulation).pack(pady=5)
+        tk.Button(self.tab3, text="Play by Tap", command=self.data_tab.step_simulation).pack(pady=5)
 
         tk.Label(self.tab4, text="환경설정 (예시)").pack(pady=20)
 
