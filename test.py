@@ -5,6 +5,7 @@ import threading
 import time
 import random
 import csv
+import os
 from data_generator import generate_script_data, save_csv
 
 # 규칙 기반 자동화를 위해 RuleSet 불러오기
@@ -377,4 +378,7 @@ class MainApp:
 if __name__ == "__main__":
     root = tk.Tk()
     app = LearningDataCreationUI(root)
+    if os.environ.get("HEADLESS"):
+        # Close the GUI automatically when running in headless mode
+        root.after(1000, root.destroy)
     root.mainloop()
