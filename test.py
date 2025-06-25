@@ -94,6 +94,24 @@ class LearningDataCreationUI:
         self.tree.column("to", width=80, anchor="center")
         self.tree.column("activity", width=120, anchor="center")
         self.tree.pack(padx=5, pady=5, fill=tk.X)
+
+        # 수동 입력을 위한 Entry 위젯과 Add 버튼
+        input_frame = tk.Frame(self.right_bottom_frame)
+        input_frame.pack(padx=5, pady=5, fill=tk.X)
+
+        tk.Label(input_frame, text="Device").grid(row=0, column=0)
+        self.device_entry = tk.Entry(input_frame, width=10)
+        self.device_entry.grid(row=0, column=1)
+        tk.Label(input_frame, text="From").grid(row=0, column=2)
+        self.from_entry = tk.Entry(input_frame, width=8)
+        self.from_entry.grid(row=0, column=3)
+        tk.Label(input_frame, text="To").grid(row=0, column=4)
+        self.to_entry = tk.Entry(input_frame, width=8)
+        self.to_entry.grid(row=0, column=5)
+        tk.Label(input_frame, text="Activity").grid(row=0, column=6)
+        self.activity_entry = tk.Entry(input_frame, width=12)
+        self.activity_entry.grid(row=0, column=7)
+        tk.Button(input_frame, text="Add", command=self.add_row).grid(row=0, column=8, padx=(5, 0))
         
         # 샘플 데이터(디바이스 #1~5) 추가
         sample_data = [
@@ -188,6 +206,20 @@ class LearningDataCreationUI:
 
     def record_event(self, device: str, action: str, time_str: str) -> None:
         self.event_log.append({"time": time_str, "device": device, "action": action})
+
+    def add_row(self) -> None:
+        device = self.device_entry.get().strip()
+        from_time = self.from_entry.get().strip()
+        to_time = self.to_entry.get().strip()
+        activity = self.activity_entry.get().strip()
+        if not device or not from_time or not activity:
+            return
+        self.tree.insert("", tk.END, values=(device, from_time, to_time, activity))
+        self.record_event(device, activity, from_time)
+        self.device_entry.delete(0, tk.END)
+        self.from_entry.delete(0, tk.END)
+        self.to_entry.delete(0, tk.END)
+        self.activity_entry.delete(0, tk.END)
 
     def toggle_device(self, device: str) -> None:
         icon = self.device_icons.get(device)
