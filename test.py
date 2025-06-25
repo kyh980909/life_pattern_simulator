@@ -240,10 +240,26 @@ class LearningDataCreationUI:
     def record_event(self, device: str, action: str, time_str: str) -> None:
         self.event_log.append({"time": time_str, "device": device, "action": action})
 
+    def _clamp_spinbox(self, sb: tk.Spinbox, low: int, high: int) -> int:
+        """Return a value clamped to [low, high] and update the widget text."""
+        try:
+            value = int(sb.get())
+        except ValueError:
+            value = low
+        value = max(low, min(high, value))
+        sb.delete(0, tk.END)
+        sb.insert(0, f"{value:02d}")
+        return value
+
+    def _read_time(self, hour_sb: tk.Spinbox, min_sb: tk.Spinbox) -> str:
+        h = self._clamp_spinbox(hour_sb, 0, 23)
+        m = self._clamp_spinbox(min_sb, 0, 59)
+        return f"{h:02d}:{m:02d}"
+
     def add_row(self) -> None:
         device = self.device_var.get().strip()
-        from_time = f"{int(self.from_hour.get()):02d}:{int(self.from_min.get()):02d}"
-        to_time = f"{int(self.to_hour.get()):02d}:{int(self.to_min.get()):02d}"
+        from_time = self._read_time(self.from_hour, self.from_min)
+        to_time = self._read_time(self.to_hour, self.to_min)
         activity = self.activity_var.get().strip()
         if not device:
             return
