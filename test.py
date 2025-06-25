@@ -100,18 +100,51 @@ class LearningDataCreationUI:
         input_frame.pack(padx=5, pady=5, fill=tk.X)
 
         tk.Label(input_frame, text="Device").grid(row=0, column=0)
-        self.device_entry = tk.Entry(input_frame, width=10)
-        self.device_entry.grid(row=0, column=1)
+        self.device_names = list(self.device_icons.keys())
+        self.device_var = tk.StringVar(value=self.device_names[0] if self.device_names else "")
+        self.device_menu = ttk.Combobox(
+            input_frame,
+            textvariable=self.device_var,
+            values=self.device_names,
+            width=12,
+            state="readonly",
+        )
+        self.device_menu.grid(row=0, column=1)
+
         tk.Label(input_frame, text="From").grid(row=0, column=2)
-        self.from_entry = tk.Entry(input_frame, width=8)
-        self.from_entry.grid(row=0, column=3)
-        tk.Label(input_frame, text="To").grid(row=0, column=4)
-        self.to_entry = tk.Entry(input_frame, width=8)
-        self.to_entry.grid(row=0, column=5)
-        tk.Label(input_frame, text="Activity").grid(row=0, column=6)
-        self.activity_entry = tk.Entry(input_frame, width=12)
-        self.activity_entry.grid(row=0, column=7)
-        tk.Button(input_frame, text="Add", command=self.add_row).grid(row=0, column=8, padx=(5, 0))
+        self.from_hour = tk.Spinbox(input_frame, from_=0, to=23, width=3, format="%02.0f")
+        self.from_hour.grid(row=0, column=3)
+        self.from_hour.delete(0, tk.END)
+        self.from_hour.insert(0, "00")
+        tk.Label(input_frame, text=":").grid(row=0, column=4)
+        self.from_min = tk.Spinbox(input_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.from_min.grid(row=0, column=5)
+        self.from_min.delete(0, tk.END)
+        self.from_min.insert(0, "00")
+
+        tk.Label(input_frame, text="To").grid(row=0, column=6)
+        self.to_hour = tk.Spinbox(input_frame, from_=0, to=23, width=3, format="%02.0f")
+        self.to_hour.grid(row=0, column=7)
+        self.to_hour.delete(0, tk.END)
+        self.to_hour.insert(0, "00")
+        tk.Label(input_frame, text=":").grid(row=0, column=8)
+        self.to_min = tk.Spinbox(input_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.to_min.grid(row=0, column=9)
+        self.to_min.delete(0, tk.END)
+        self.to_min.insert(0, "00")
+
+        tk.Label(input_frame, text="Activity").grid(row=0, column=10)
+        self.activity_var = tk.StringVar(value="ON")
+        self.activity_menu = ttk.Combobox(
+            input_frame,
+            textvariable=self.activity_var,
+            values=["ON", "OFF"],
+            width=6,
+            state="readonly",
+        )
+        self.activity_menu.grid(row=0, column=11)
+
+        tk.Button(input_frame, text="Add", command=self.add_row).grid(row=0, column=12, padx=(5, 0))
         
         # 샘플 데이터(디바이스 #1~5) 추가
         sample_data = [
@@ -208,18 +241,21 @@ class LearningDataCreationUI:
         self.event_log.append({"time": time_str, "device": device, "action": action})
 
     def add_row(self) -> None:
-        device = self.device_entry.get().strip()
-        from_time = self.from_entry.get().strip()
-        to_time = self.to_entry.get().strip()
-        activity = self.activity_entry.get().strip()
-        if not device or not from_time or not activity:
+        device = self.device_var.get().strip()
+        from_time = f"{int(self.from_hour.get()):02d}:{int(self.from_min.get()):02d}"
+        to_time = f"{int(self.to_hour.get()):02d}:{int(self.to_min.get()):02d}"
+        activity = self.activity_var.get().strip()
+        if not device:
             return
         self.tree.insert("", tk.END, values=(device, from_time, to_time, activity))
         self.record_event(device, activity, from_time)
-        self.device_entry.delete(0, tk.END)
-        self.from_entry.delete(0, tk.END)
-        self.to_entry.delete(0, tk.END)
-        self.activity_entry.delete(0, tk.END)
+        # reset controls
+        if self.device_names:
+            self.device_menu.set(self.device_names[0])
+        for sb in (self.from_hour, self.from_min, self.to_hour, self.to_min):
+            sb.delete(0, tk.END)
+            sb.insert(0, "00")
+        self.activity_menu.set("ON")
 
     def toggle_device(self, device: str) -> None:
         icon = self.device_icons.get(device)
