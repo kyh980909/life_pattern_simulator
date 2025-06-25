@@ -78,20 +78,18 @@ class LearningDataCreationUI:
         self.sim_time_label.pack(padx=5, pady=5, anchor="center")
         
         # (오른쪽 하단) 테이블(Grid 또는 Treeview)을 이용한 학습데이터 입력
-        table_label = tk.Label(self.right_bottom_frame, text="학습데이터 입력 (From / To / Activity 등)", font=("Helvetica", 12, "bold"))
+        table_label = tk.Label(self.right_bottom_frame, text="학습데이터 입력 (Time / Activity 등)", font=("Helvetica", 12, "bold"))
         table_label.pack(padx=5, pady=5, anchor="w")
         
         # Treeview 예시
-        columns = ("device", "from", "to", "activity")
+        columns = ("device", "time", "activity")
         self.tree = ttk.Treeview(self.right_bottom_frame, columns=columns, show="headings", height=5)
         self.tree.heading("device", text="Device(#)")
-        self.tree.heading("from", text="From")
-        self.tree.heading("to", text="To")
+        self.tree.heading("time", text="Time")
         self.tree.heading("activity", text="Activity")
         
         self.tree.column("device", width=80, anchor="center")
-        self.tree.column("from", width=80, anchor="center")
-        self.tree.column("to", width=80, anchor="center")
+        self.tree.column("time", width=80, anchor="center")
         self.tree.column("activity", width=120, anchor="center")
         self.tree.pack(padx=5, pady=5, fill=tk.X)
 
@@ -111,29 +109,18 @@ class LearningDataCreationUI:
         )
         self.device_menu.grid(row=0, column=1)
 
-        tk.Label(input_frame, text="From").grid(row=0, column=2)
-        self.from_hour = tk.Spinbox(input_frame, from_=0, to=23, width=3, format="%02.0f")
-        self.from_hour.grid(row=0, column=3)
-        self.from_hour.delete(0, tk.END)
-        self.from_hour.insert(0, "00")
+        tk.Label(input_frame, text="Time").grid(row=0, column=2)
+        self.time_hour = tk.Spinbox(input_frame, from_=0, to=23, width=3, format="%02.0f")
+        self.time_hour.grid(row=0, column=3)
+        self.time_hour.delete(0, tk.END)
+        self.time_hour.insert(0, "00")
         tk.Label(input_frame, text=":").grid(row=0, column=4)
-        self.from_min = tk.Spinbox(input_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.from_min.grid(row=0, column=5)
-        self.from_min.delete(0, tk.END)
-        self.from_min.insert(0, "00")
+        self.time_min = tk.Spinbox(input_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.time_min.grid(row=0, column=5)
+        self.time_min.delete(0, tk.END)
+        self.time_min.insert(0, "00")
 
-        tk.Label(input_frame, text="To").grid(row=0, column=6)
-        self.to_hour = tk.Spinbox(input_frame, from_=0, to=23, width=3, format="%02.0f")
-        self.to_hour.grid(row=0, column=7)
-        self.to_hour.delete(0, tk.END)
-        self.to_hour.insert(0, "00")
-        tk.Label(input_frame, text=":").grid(row=0, column=8)
-        self.to_min = tk.Spinbox(input_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.to_min.grid(row=0, column=9)
-        self.to_min.delete(0, tk.END)
-        self.to_min.insert(0, "00")
-
-        tk.Label(input_frame, text="Activity").grid(row=0, column=10)
+        tk.Label(input_frame, text="Activity").grid(row=0, column=6)
         self.activity_var = tk.StringVar(value="ON")
         self.activity_menu = ttk.Combobox(
             input_frame,
@@ -142,17 +129,17 @@ class LearningDataCreationUI:
             width=6,
             state="readonly",
         )
-        self.activity_menu.grid(row=0, column=11)
+        self.activity_menu.grid(row=0, column=7)
 
-        tk.Button(input_frame, text="Add", command=self.add_row).grid(row=0, column=12, padx=(5, 0))
+        tk.Button(input_frame, text="Add", command=self.add_row).grid(row=0, column=8, padx=(5, 0))
         
         # 샘플 데이터(디바이스 #1~5) 추가
         sample_data = [
-            ("#1", "17:30", "20:00", "조명 OFF"),
-            ("#2", "20:00", "22:00", "보일러 ON"),
-            ("#3", "22:00", "23:00", "가스밸브 확인"),
-            ("#4", "23:00", "07:00", "취침모드"),
-            ("#5", "07:00", "08:00", "조명 ON")
+            ("#1", "17:30", "조명 OFF"),
+            ("#2", "20:00", "보일러 ON"),
+            ("#3", "22:00", "가스밸브 확인"),
+            ("#4", "23:00", "취침모드"),
+            ("#5", "07:00", "조명 ON")
         ]
         for row in sample_data:
             self.tree.insert("", tk.END, values=row)
@@ -258,17 +245,16 @@ class LearningDataCreationUI:
 
     def add_row(self) -> None:
         device = self.device_var.get().strip()
-        from_time = self._read_time(self.from_hour, self.from_min)
-        to_time = self._read_time(self.to_hour, self.to_min)
+        time_str = self._read_time(self.time_hour, self.time_min)
         activity = self.activity_var.get().strip()
         if not device:
             return
-        self.tree.insert("", tk.END, values=(device, from_time, to_time, activity))
-        self.record_event(device, activity, from_time)
+        self.tree.insert("", tk.END, values=(device, time_str, activity))
+        self.record_event(device, activity, time_str)
         # reset controls
         if self.device_names:
             self.device_menu.set(self.device_names[0])
-        for sb in (self.from_hour, self.from_min, self.to_hour, self.to_min):
+        for sb in (self.time_hour, self.time_min):
             sb.delete(0, tk.END)
             sb.insert(0, "00")
         self.activity_menu.set("ON")
@@ -282,7 +268,7 @@ class LearningDataCreationUI:
         new_color = "yellow" if new_action == "ON" else "gray"
         self.floorplan_canvas.itemconfig(icon, fill=new_color)
         time_str = self.current_sim_time()
-        self.tree.insert("", tk.END, values=(device, time_str, "-", new_action))
+        self.tree.insert("", tk.END, values=(device, time_str, new_action))
         self.record_event(device, new_action, time_str)
 
     def process_time_step(self, time_str: str) -> None:
@@ -292,7 +278,7 @@ class LearningDataCreationUI:
                 device = rule.get("device")
                 activity = rule.get("action")
                 if device and activity:
-                    self.tree.insert("", tk.END, values=(device, time_str, "-", activity))
+                    self.tree.insert("", tk.END, values=(device, time_str, activity))
                     icon = self.device_icons.get(device)
                     if icon:
                         color = "yellow" if activity.upper() == "ON" else "gray"
@@ -302,7 +288,7 @@ class LearningDataCreationUI:
         if random.random() < 0.5:
             device = random.choice(list(self.device_icons.keys()))
             activity = random.choice(["ON", "OFF"])
-            self.tree.insert("", tk.END, values=(device, time_str, "-", activity))
+            self.tree.insert("", tk.END, values=(device, time_str, activity))
             icon = self.device_icons.get(device)
             if icon:
                 color = "yellow" if activity == "ON" else "gray"
